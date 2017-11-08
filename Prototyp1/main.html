@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+	<head>
+		<title>prototyp - diplomka</title>
+		<meta charset="UTF-8"/>
+	</head>
+	<body>
+		<div id="map"></div>
+	<style>
+		#map {
+			height: 100%;
+		}
+		/* Optional: Makes the sample page fill the window. */
+		html, body {
+			height: 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+	</style>
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAYwm9-TgjNu-PH_rMjoyiRS5iCu6zZdSk&libraries=drawing&libraries=visualization,geometry"></script>
+	<script src="./bower_components/heatmap.js-amd/build/heatmap.min.js"></script>
+	<script src="./bower_components/heatmap.js-amd/plugins/gmaps-heatmap/gmaps-heatmap.js"></script>
+	<script>
+	var map = new google.maps.Map(document.getElementById('map'), {
+		center: {lat: 49.195266, lng: 16.608489},
+		zoom: 15,
+	});
+
+	var heatmapConfig = {
+		"radius": 0.001,
+		"maxOpacity": 1,
+		"scaleRadius": true,
+		"latField": 'lat',
+		"lngField": 'lng',
+		"valueField": 'count'
+	};
+
+	var heatmap = new HeatmapOverlay(map, heatmapConfig);
+	var service = new google.maps.DistanceMatrixService();
+
+	function calculateTravelTime(from, to) {
+		var duration = {'duration':0};
+		service.getDistanceMatrix({
+			origins: [from],
+			destinations: [to],
+			travelMode: 'TRANSIT'
+		}, function(result) {
+			if(result != null && result['rows'][0]['elements'][0]['status'] == "OK") {
+				duration['duration'] = result['rows'][0]['elements'][0]['duration']['value'];
+				var obj = {
+					lat: to.lat(),
+					lng: to.lng(),
+					count: duration['duration'] 
+				};
+				heatmap.addData(obj);
+			} else {
+				var obj = {
+					lat: to.lat(),
+					lng: to.lng(),
+					count: 1
+				};
+				heatmap.addData(obj);
+			}
+		});
+	}
+
+	function drawHeatmap(from, map) {
+		var division = 10.0;
+		var bounds = map.getBounds();
+		var ne = bounds.getNorthEast();
+		var sw = bounds.getSouthWest();
+		for(var x = sw.lat(); x <= ne.lat(); x += Math.abs(ne.lat() - sw.lat()) / division) {
+			for(var y = sw.lng(); y <= ne.lng(); y += Math.abs(sw.lng() - ne.lng()) / division) {
+				calculateTravelTime(from, new google.maps.LatLng(x, y));
+			}
+		}
+		heatmap.repaint();
+	}
+
+	map.addListener('click', function(ev) {
+		// Clears content of heatmap
+		heatmap.setData({
+			min: 0,
+			max: 0,
+			data: []
+		});
+		// Draw heatmap
+		drawHeatmap(ev.latLng, map);
+	});
+	</script>
+	</body>
+</html>

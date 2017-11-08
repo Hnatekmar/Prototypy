@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+	<head>
+		<title>prototyp - diplomka</title>
+		<meta charset="UTF-8"/>
+	</head>
+	<body>
+		<div id="map"></div>
+	<style>
+		#map {
+			height: 100%;
+		}
+		/* Optional: Makes the sample page fill the window. */
+		html, body {
+			height: 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+	</style>
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAYwm9-TgjNu-PH_rMjoyiRS5iCu6zZdSk&libraries=drawing&libraries=visualization,geometry"></script>
+	<script src="./bower_components/heatmap.js-amd/build/heatmap.min.js"></script>
+	<script src="./bower_components/heatmap.js-amd/plugins/gmaps-heatmap/gmaps-heatmap.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	<script>
+	var map = new google.maps.Map(document.getElementById('map'), {
+		center: {
+			lat: 50.075347, lng:14.436276
+		},
+		zoom: 15,
+	});
+
+	var heatmapConfig = {
+		"radius": 0.0001,
+		"maxOpacity": 1.0,
+		"scaleRadius": true,
+		"latField": 'lat',
+		"lngField": 'lng',
+		"valueField": 'value'
+	};
+
+	var heatmap = new HeatmapOverlay(map, heatmapConfig);
+	var service = new google.maps.DistanceMatrixService();
+
+	function drawHeatmap(from, map) {
+		var division = 15;//Math.round((23.0 - map.getZoom()) / 22 * 50.0);
+		var bounds = map.getBounds();
+		var ne = bounds.getNorthEast();
+		var sw = bounds.getSouthWest();
+		jQuery.ajax(
+			{
+				type: "GET",
+				url: "http://localhost:8080/heatmap/" + from.lat() + "/" + from.lng() +
+				"/" + Math.min(ne.lat(), sw.lat()) + "/" + Math.min(ne.lng(), sw.lng()) + "/"
+				+ Math.max(sw.lat(), ne.lat()) + "/" + Math.max(sw.lng(), ne.lng()) + "/" + division,
+				contentType: 'application/json'
+			}).done(function(data) {
+				// Clears content of heatmap
+				heatmap.setData({
+					min: 0,
+					max: 0,
+					data: []
+				});
+				for(i in data) {
+					heatmap.addData(data[i]);
+				}
+		});
+	}
+
+	map.addListener('click', function(ev) {
+		// Draw heatmap
+		drawHeatmap(ev.latLng, map);
+	});
+	</script>
+	</body>
+</html>
